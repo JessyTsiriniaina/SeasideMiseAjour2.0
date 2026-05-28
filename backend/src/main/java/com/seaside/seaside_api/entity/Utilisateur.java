@@ -92,4 +92,13 @@ public class Utilisateur implements UserDetails {
     @Override public boolean isEnabled() { 
         return estActif; 
     }
+
+    @Override
+    public boolean isAccountNonExpired() { return true ;}
+
+    @Override
+    public boolean isAccountNonLocked() { return estActif; }
+
+    @Override
+    public boolean isCredentialsNonExpired() {return true; }
 }
