@@ -5,6 +5,7 @@ import "./dashboard.css";
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useEvents, updateEvent, deleteEvent, addGate, removeGate } from "../lib/eventStore";
 import { EventModal, DeleteConfirmModal } from "./Dashboard";
+import { APP_NAME } from '../config/config';
 
 function formatPrice(n) {
   if (n === "" || n === null || n === undefined || isNaN(n)) return "—";
@@ -112,7 +113,7 @@ const EventDetails = () => {
     return (
       <div className="dashboard-page">
         <header className="dashboard-header">
-          <Link to="/dashboard" className="dashboard-brand">EventTrack</Link>
+          <Link to="/dashboard" className="dashboard-brand">{APP_NAME}</Link>
         </header>
         <main className="dashboard-main">
           <div className="empty-state">
@@ -151,7 +152,7 @@ const EventDetails = () => {
   return (
     <div className="dashboard-page">
       <header className="dashboard-header">
-        <Link to="/dashboard" className="dashboard-brand">EventTrack</Link>
+        <Link to="/dashboard" className="dashboard-brand">{APP_NAME}</Link>
       </header>
 
       <main className="dashboard-main">

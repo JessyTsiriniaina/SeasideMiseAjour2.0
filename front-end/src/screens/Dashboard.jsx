@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import "./login.css";
 import "./dashboard.css";
 import { useEvents, addEvent, updateEvent, deleteEvent } from "../lib/eventStore";
+import { APP_NAME } from '../config/config';
 
 export const emptyEvent = {
   name: "",
@@ -34,7 +35,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard-page">
       <header className="dashboard-header" id='dashboard-header'>
-        <h1 className="dashboard-brand">EventTrack</h1>
+        <h1 className="dashboard-brand">{APP_NAME}</h1>
         <div className="dashboard-user">
           <span className="dashboard-username">{userName}</span>
           <button className="dashboard-logout" onClick={handleLogout}>
