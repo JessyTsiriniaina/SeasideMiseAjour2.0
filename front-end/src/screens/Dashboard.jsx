@@ -1,38 +1,26 @@
 import React from 'react'
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import "./login.css";
 import "./dashboard.css";
+import { useEvents, addEvent, updateEvent, deleteEvent } from "../lib/eventStore";
 
-const initialEvents = [
-  {
-    id: 1,
-    name: "Concert de printemps",
-    date: "2026-12-06",
-    time: "20:00",
-    location: "Tamatavy 501",
-    description: "Un concert en plein air pour célébrer le début de la saison.",
-    cover: "party.jpeg",
-  },
-  {
-    id: 2,
-    name: "Conférence Tech 2026",
-    date: "2026-03-07",
-    time: "09:00",
-    location: "Arena Toamasina",
-    description: "Une journée dédiée aux dernières innovations technologiques.",
-    cover: "conference.jpeg",
-  },
-];
+export const emptyEvent = {
+  name: "",
+  date: "",
+  time: "",
+  location: "",
+  description: "",
+  cover: "",
+  gates: [],
+};
 
 const userName = "Jessy Tsiriniaina"
 
 const Dashboard = () => {
-  const [events, setEvents] = useState(initialEvents);
+  const events = useEvents();
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
-  const [editingEvent, setEditingEvent] = useState(null);
-  const [deleteEventId, setDeleteEventId] = useState(null);
 
   const handleLogout = () => {
     navigate("/login");
@@ -41,20 +29,6 @@ const Dashboard = () => {
   const handleCreate = (newEvent) => {
     setEvents([...events, { ...newEvent, id: Date.now() }]);
     setShowModal(false);
-  };
-
-  const handleUpdate = (updated) => {
-    setEvents(events.map((ev) => (ev.id === updated.id ? updated : ev)));
-    setEditingEvent(null);
-  };
-
-  const handleDelete = (id) => {
-    setDeleteEventId(id);
-  };
-
-  const confirmDelete = () => {
-    setEvents(events.filter((ev) => ev.id !== deleteEventId));
-    setDeleteEventId(null);
   };
 
   return (
@@ -84,29 +58,20 @@ const Dashboard = () => {
         ) : (
           <div className="events-grid">
             {events.map((ev) => (
-              <article key={ev.id} className="event-card">
-                <img className="event-cover" src={ev.cover} alt={ev.name} />
-                <div className="event-body">
-                  <h3 className="event-name">{ev.name}</h3>
-                  <p className="event-meta">{ev.date} • {ev.time}</p>
-                  <p className="event-meta">{ev.location}</p>
-                  <p className="event-description">{ev.description}</p>
-                  <div className="event-actions">
-                    <button
-                      className="event-action-button event-action-edit"
-                      onClick={() => setEditingEvent(ev)}
-                    >
-                      Modifier
-                    </button>
-                    <button
-                      className="event-action-button event-action-delete"
-                      onClick={() => handleDelete(ev.id)}
-                    >
-                      Supprimer
-                    </button>
+              <Link
+                key={ev.id}
+                to={`/event/${ev.id}`}
+                className="event-card-link"
+              >
+                <article className="event-card">
+                  <img className="event-cover" src={ev.cover} alt={ev.name} />
+                  <div className="event-body">
+                    <h3 className="event-name">{ev.name}</h3>
+                    <p className="event-meta">{ev.date} • {ev.time}</p>
+                    <p className="event-meta">{ev.location}</p>
                   </div>
-                </div>
-              </article>
+                </article>
+              </Link>
             ))}
           </div>
         )}
@@ -116,36 +81,12 @@ const Dashboard = () => {
         <EventModal onClose={() => setShowModal(false)} onSubmit={handleCreate} />
       )}
 
-      {editingEvent && (
-        <EventModal
-          onClose={() => setEditingEvent(null)}
-          onSubmit={handleUpdate}
-          initialData={editingEvent}
-        />
-      )}
-
-      {deleteEventId && (
-        <DeleteConfirmModal
-          onCancel={() => setDeleteEventId(null)}
-          onConfirm={confirmDelete}
-        />
-      )}
-
     </div>
   );
 }
 
-function EventModal({ onClose, onSubmit, initialData }) {
-  const [form, setForm] = useState(
-    initialData || {
-      name: "",
-      date: "",
-      time: "",
-      location: "",
-      description: "",
-      cover: "",
-    }
-);
+export const EventModal = ({ onClose, onSubmit, initialData }) => {
+  const [form, setForm] = useState(initialData || emptyEvent);
   const [coverName, setCoverName] = useState("");
   const [error, setError] = useState("");
 
@@ -243,7 +184,7 @@ function EventModal({ onClose, onSubmit, initialData }) {
   );
 }
 
-function DeleteConfirmModal({ onCancel, onConfirm }) {
+export const DeleteConfirmModal = ({ onCancel, onConfirm }) => {
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal modal-confirm" onClick={(e) => e.stopPropagation()}>
@@ -264,5 +205,5 @@ function DeleteConfirmModal({ onCancel, onConfirm }) {
   );
 }
 
-
-export default Dashboard
+export { addEvent, updateEvent, deleteEvent };
+export default Dashboard;
