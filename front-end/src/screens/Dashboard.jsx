@@ -28,7 +28,8 @@ const Dashboard = () => {
   };
 
   const handleCreate = (newEvent) => {
-    setEvents([...events, { ...newEvent, id: Date.now() }]);
+    //setEvents([...events, { ...newEvent, id: Date.now() }]);
+    addEvent(newEvent);
     setShowModal(false);
   };
 
