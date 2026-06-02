@@ -1,10 +1,11 @@
 import React from 'react'
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import "./login.css";
 import "./dashboard.css";
 import { useEvents, addEvent, updateEvent, deleteEvent } from "../lib/eventStore";
 import { APP_NAME } from '../config/config';
+import AuthContext from "../context/AuthProvider";
 
 export const emptyEvent = {
   name: "",
@@ -16,9 +17,11 @@ export const emptyEvent = {
   gates: [],
 };
 
-const userName = "Jessy Tsiriniaina"
-
 const Dashboard = () => {
+
+  const { auth } = useContext(AuthContext);
+  const userName = auth.userName;
+
   const events = useEvents();
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);

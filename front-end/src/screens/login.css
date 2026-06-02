@@ -99,3 +99,12 @@
 .login-button:hover {
   background-color: var(--color-primary-hover);
 }
+
+.login-error {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: var(--font-size-small);
+}

@@ -1,13 +1,56 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import './login.css'
+import axiosInstance from "../api/axios";
+import AuthContext from "../context/AuthProvider";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
+  const navigate = useNavigate();
+  const { setAuth } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log({ email, password });
+    setErrorMessage("");
+
+    const data = {
+      email,
+      motDePasse: password,
+    };
+
+    try {
+      const response = await axiosInstance.post(
+        "/auth/login",
+        data,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log(response.data);
+
+      const accessToken = response?.data?.token;
+      const userRole = response?.data?.role;
+      const userName = response?.data?.nomUtilisateur;
+      setAuth({ email, password, accessToken, userRole, userName });
+
+      setEmail("");
+      setPassword("");
+      navigate("/dashboard");
+      //success
+    } catch (error) {
+      if (error.response?.status === 401) {
+        setErrorMessage("Adresse e-mail ou mot de passe incorrect.");
+      } else {
+        setErrorMessage("Une erreur est survenue. Veuillez réessayer.");
+      }
+
+      console.error(error.response?.data || error.message);
+    }
   };
 
   return (
@@ -17,6 +60,11 @@ const Login = () => {
         <p className="login-subtitle">Accédez à votre tableau de bord</p>
 
         <form className="login-form" onSubmit={handleSubmit}>
+          {errorMessage && (
+            <div className="login-error">
+              {errorMessage}
+            </div>
+          )}
           <div className="login-field">
             <label className="login-label" htmlFor="email">Adresse e-mail</label>
             <input
@@ -24,7 +72,10 @@ const Login = () => {
               type="email"
               className="login-input"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setErrorMessage("");
+              }}
               required
             />
           </div>
@@ -36,7 +87,10 @@ const Login = () => {
               type="password"
               className="login-input"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setErrorMessage("");
+              }}
               required
             />
           </div>
