@@ -141,7 +141,7 @@ const EventDetails = () => {
 
   const handleDelete = () => {
     deleteEvent(event.id);
-    navigate({ to: "/dashboard" });
+    navigate("/dashboard");
   };
 
   const handleAddGate = (gate) => {
