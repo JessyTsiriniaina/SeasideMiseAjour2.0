@@ -8,6 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.seaside.seaside_api.dto.request.ChangeMotDePasseRequest;
 import com.seaside.seaside_api.dto.request.ChangeRoleRequest;
 import com.seaside.seaside_api.dto.request.ModifierProfilRequest;
+import com.seaside.seaside_api.dto.request.ModifierUtilisateurAdminRequest;
+import com.seaside.seaside_api.dto.request.ResetMotDePasseAdminRequest;
 import com.seaside.seaside_api.dto.response.UtilisateurResponse;
 import com.seaside.seaside_api.entity.Utilisateur;
 import com.seaside.seaside_api.repository.UtilisateurRepository;
@@ -31,7 +33,7 @@ public class UtilisateurService {
     private Utilisateur moi() {
         Utilisateur user = (Utilisateur) SecurityContextHolder
                 .getContext().getAuthentication().getPrincipal();
-        
+
         // Recharge depuis la bdd pour eviter lazyloadingexception
         return utilisateurRepository.findById(user.getId())
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouve"));
@@ -200,4 +202,71 @@ public class UtilisateurService {
         return utilisateurRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
     }
+
+
+    // ─── Reset mot de passe par l'admin ─────────────────────────
+    // L'admin n'a pas besoin de connaître l'ancien mot de passe
+    public void resetMotDePasseAdmin(UUID id, ResetMotDePasseAdminRequest req) {
+ 
+        // Vérifier que confirmation = nouveau mot de passe
+        if (!req.getNouveauMotDePasse().equals(req.getConfirmation())) {
+            throw new RuntimeException("La confirmation ne correspond pas au nouveau mot de passe");
+        }
+ 
+        Utilisateur u = trouverUtilisateur(id);
+ 
+        // Hasher et sauvegarder le nouveau mot de passe
+        u.setMotsDePasseHash(passwordEncoder.encode(req.getNouveauMotDePasse()));
+        utilisateurRepository.save(u);
+ 
+        // Invalider tous les refresh tokens de cet utilisateur
+        refreshTokenService.supprimerParUtilisateur(u);
+    }
+
+    // Modification complete par admin (nom + email + role + statut)
+    public UtilisateurResponse modifierUtilisateurAdmin(UUID id, ModifierUtilisateurAdminRequest req) {
+        Utilisateur u = trouverUtilisateur(id);
+
+        // Verifier doublon email
+        if (req.getEmail() != null
+                && !req.getEmail().equals(u.getEmail())
+                && utilisateurRepository.existsByEmail(req.getEmail())) {
+            throw new RuntimeException("Cet email est deja utilise par un autre");
+        }
+
+        // Verifier doublon nom
+        if (req.getNomUtilisateur() != null
+                && !req.getNomUtilisateur().equalsIgnoreCase(u.getNomUtilisateur())
+                && utilisateurRepository.existsByEmail(req.getNomUtilisateur())) {
+            throw new RuntimeException("Ce nom d'utilisateur est deja pris");
+        }
+
+        //Protection : l'admin ne peut pas se désactiver lui-même via cette route
+        if (req.getEstActif() != null
+                && !req.getEstActif()
+                && u.getId().equals(moi().getId())) {
+            throw new RuntimeException("Vous ne pouvez pas désactiver votre propre compte admin");
+        }
+
+        // Protection : l'admin ne peut pas se changer  son propre role
+        if (req.getRole() != null && u.getId().equals(moi().getId())) {
+            throw new RuntimeException("Vous ne pouvez pas modifier votre propre rôle");
+        }
+
+        // Appliquer seulement les champs fournis (non null)
+        if (req.getNomUtilisateur() != null) u.setNomUtilisateur(req.getNomUtilisateur());
+        if (req.getEmail() != null)          u.setEmail(req.getEmail());
+        if (req.getRole() != null)           u.setRole(req.getRole());
+        if (req.getEstActif() != null) {
+            u.setEstActif(req.getEstActif());
+            // Si désactivé → invalider les refresh tokens
+            if (!req.getEstActif()) {
+                refreshTokenService.supprimerParUtilisateur(u);
+            }
+        }
+ 
+        return toResponse(utilisateurRepository.save(u));
+
+    }
+
 }

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.seaside.seaside_api.dto.request.ChangeMotDePasseRequest;
 import com.seaside.seaside_api.dto.request.ChangeRoleRequest;
 import com.seaside.seaside_api.dto.request.ModifierProfilRequest;
+import com.seaside.seaside_api.dto.request.ResetMotDePasseAdminRequest;
 import com.seaside.seaside_api.dto.response.UtilisateurResponse;
 import com.seaside.seaside_api.entity.Utilisateur;
 import com.seaside.seaside_api.service.UtilisateurService;
@@ -90,6 +92,15 @@ public class UtilisateurController {
     @DeleteMapping("/admin/utilisateurs/{id}")
     public ResponseEntity<Void> supprimerUtilisateur(@PathVariable UUID id) {
         utilisateurService.supprimerUtilisateur(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/admin/utilisateurs/{id}/mot-de-passe")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> resetMotDePasse(
+            @PathVariable UUID id,
+            @Valid @RequestBody ResetMotDePasseAdminRequest req) {
+        utilisateurService.resetMotDePasseAdmin(id, req);
         return ResponseEntity.noContent().build();
     }
 }
