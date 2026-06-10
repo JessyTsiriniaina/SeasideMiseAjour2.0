@@ -31,12 +31,11 @@ const Login = () => {
         }
       );
 
-      console.log(response.data);
-
       const accessToken = response?.data?.token;
+      const refreshToken = response?.data?.refreshToken;
       const userRole = response?.data?.role;
       const userName = response?.data?.nomUtilisateur;
-      setAuth({ email, password, accessToken, userRole, userName });
+      setAuth({ email, accessToken, refreshToken, userRole, userName });
 
       setEmail("");
       setPassword("");

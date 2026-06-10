@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useContext, useEffect } from "react";
 import "./login.css";
 import "./dashboard.css";
 import "./admin.css";
 import { Link, useNavigate } from "react-router-dom";
 import { APP_NAME } from "../config/config";
 import { DeleteConfirmModal } from "./Dashboard";
+import AuthContext from "../context/AuthProvider";
+import { fetchUsers, registerUser } from "../services/users";
 
 function formatPrice(n) {
   return new Intl.NumberFormat("fr-FR").format(Number(n) || 0) + " Ar";
@@ -18,11 +20,10 @@ const NAV = [
 ];
 
 const Admin = () => {
+  const { auth, logout } = useContext(AuthContext);
+  const userName = auth.userName;
 
-  // const { auth } = useContext(AuthContext);
-  // const userName = auth.userName;
-
-  const userName = "Admin";
+  const [users, setUsers] = useState([]);
 
   const navigate = useNavigate();
   const [section, setSection] = useState("home");
@@ -32,6 +33,14 @@ const Admin = () => {
     setSection(id);
     setNavOpen(false);
   };
+
+  useEffect(() => {
+    fetchUsers(auth.accessToken)
+      .then((data) => setUsers(data))
+      .catch((error) => {
+        console.error("Error fetching users:", error);
+      });
+  }, [auth.accessToken]);
 
   return (
     <div className="admin-layout">
@@ -75,15 +84,15 @@ const Admin = () => {
           </h1>
           <div className="admin-topbar-user">
             <span className="dashboard-username">{userName}</span>
-            <button className="dashboard-logout" onClick={() => navigate("/login")}>
+            <button className="dashboard-logout" onClick={() => { logout(); navigate("/login"); }}>
               Se déconnecter
             </button>
           </div>
         </header>
 
         <main className="admin-main">
-          {section === "home" && <HomeSection />}
-          {section === "users" && <UsersSection />}
+          {section === "home" && <HomeSection users={users} setUsers={setUsers} />}
+          {section === "users" && <UsersSection users={users} setUsers={setUsers} />}
           {section === "devices" && <DevicesSection />}
           {section === "events" && <EventsSection />}
         </main>
@@ -92,12 +101,15 @@ const Admin = () => {
   )
 }
 
-const HomeSection = () => {
+const HomeSection = ({ users, setUsers }) => {
+  const eventCount = () => {
+    return users.reduce((acc, u) => acc + (u.nombreEvenements ? u.nombreEvenements : 0), 0);
+  }
   return (
     <>
       <section className="admin-stats">
-        <StatCard label="Utilisateurs" value="3" />
-        <StatCard label="Événements" value="2" />
+        <StatCard label="Utilisateurs" value={`${users.length}`} />
+        <StatCard label="Événements" value={`${eventCount()}`} />
         <StatCard label="Dispositifs" value="5" />
         <StatCard label="Personnes comptées" value="210" />
       </section>
@@ -105,13 +117,10 @@ const HomeSection = () => {
   )
 }
 
-const UsersSection = () => {
+const UsersSection = ({ users, setUsers }) => {
+  const { auth } = useContext(AuthContext);
   const [query, setQuery] = useState("");
-  const [users, setUsers] = useState([
-    { id: 1, name: "Alice Dupont", email: "alice.dupont@example.com", role: "Admin", status: "Actif" },
-    { id: 2, name: "Jhon Doe", email: "jhon.doe@example.com", role: "Client", status: "Inactif" },
-    { id: 3, name: "Rakoto", email: "rakoto@exemple.com", role: "Comptoire", status: "Actif" }
-  ]);
+
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -120,11 +129,42 @@ const UsersSection = () => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return (
-      u.name.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      u.role.toLowerCase().includes(q)
+      (u.nomUtilisateur || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.role || "").toLowerCase().includes(q)
     );
   });
+
+  const refreshUsers = async () => {
+    try {
+      const data = await fetchUsers(auth.accessToken);
+      setUsers(data);
+    } catch (error) {
+      console.error("Error refreshing users:", error);
+    }
+  };
+
+  const addUser = async (user) => {
+    try {
+      await registerUser(user);
+      await refreshUsers();
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const updateUser = async (user) => {
+    console.warn("updateUser is not implemented yet", user);
+  };
+
+  const deleteUser = async (id) => {
+    console.warn("deleteUser is not implemented yet", id);
+  };
+
+  const handleCreate = async (user) => {
+    await addUser(user);
+    setCreating(false);
+  };
 
   return (
     <section className="admin-section">
@@ -160,12 +200,12 @@ const UsersSection = () => {
             ) : (
               filtered.map((u) => (
                 <tr key={u.id}>
-                  <td data-label="Nom">{u.name}</td>
+                  <td data-label="Nom">{u.nomUtilisateur}</td>
                   <td data-label="Email">{u.email}</td>
                   <td data-label="Rôle">{u.role}</td>
                   <td data-label="Statut">
-                    <span className={u.status === "Actif" ? "status-pill status-on" : "status-pill status-off"}>
-                      {u.status}
+                    <span className={u.estActif ? "status-pill status-on" : "status-pill status-off"}>
+                      {u.estActif ? "Actif" : "Suspendu"}
                     </span>
                   </td>
                   <td data-label="Actions">
@@ -184,14 +224,14 @@ const UsersSection = () => {
       {creating && (
         <UserModal
           onClose={() => setCreating(false)}
-          onSubmit={(u) => { addUser(u); setCreating(false); }}
+          onSubmit={handleCreate}
         />
       )}
       {editing && (
         <UserModal
           initialData={editing}
           onClose={() => setEditing(null)}
-          onSubmit={(u) => { updateUser(u); setEditing(null); }}
+          onSubmit={async (u) => { await updateUser(u); setEditing(null); }}
         />
       )}
       {deleting && (
@@ -230,21 +270,37 @@ function StatCard({ label, value }) {
 
 function UserModal({ onClose, onSubmit, initialData }) {
   const [form, setForm] = useState(
-    initialData ||
-    { id: null, name: "", email: "", role: "", status: "", password: "", passwordConfirm: "" }
+    initialData
+      ? {
+        id: initialData.id || null,
+        name: initialData.nomUtilisateur || initialData.name || "",
+        email: initialData.email || "",
+        role: initialData.role || "",
+        status: initialData.estActif ? "Actif" : "Suspendu",
+        password: "",
+        passwordConfirm: "",
+      }
+      : { id: null, name: "", email: "", role: "", status: "", password: "", passwordConfirm: "" }
   );
   const [error, setError] = useState("");
   const isEdit = Boolean(initialData);
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return setError("Le nom est requis");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError("Email invalide");
     if (!form.password.trim()) return setError("Le mot de passe est requis");
     if (form.password !== form.passwordConfirm) return setError("Les mots de passe ne correspondent pas");
     setError("");
-    onSubmit(form);
+
+    try {
+      await onSubmit(form);
+      onClose();
+    } catch (err) {
+      const message = err?.response?.data?.message || err?.message || "Une erreur est survenue";
+      setError(message);
+    }
   };
 
   return (
@@ -261,14 +317,18 @@ function UserModal({ onClose, onSubmit, initialData }) {
             <input type="email" className="modal-input" value={form.email} onChange={update("email")} required />
           </div>
 
-          <div className="modal-field">
-            <label className="modal-label">Mot de passe</label>
-            <input className="modal-input" type="password" value={form.password} onChange={update("password")} required />
-          </div>
-          <div className="modal-field">
-            <label className="modal-label">Confirmer le mot de passe</label>
-            <input className="modal-input" type="password" value={form.passwordConfirm} onChange={update("passwordConfirm")} required />
-          </div>
+          {!initialData && (
+            <>
+              <div className="modal-field">
+                <label className="modal-label">Mot de passe</label>
+                <input className="modal-input" type="password" value={form.password} onChange={update("password")} required />
+              </div>
+              <div className="modal-field">
+                <label className="modal-label">Confirmer le mot de passe</label>
+                <input className="modal-input" type="password" value={form.passwordConfirm} onChange={update("passwordConfirm")} required />
+              </div>
+            </>
+          )}
           <div className="modal-row">
             <div className="modal-field">
               <label className="modal-label">Rôle</label>

@@ -19,7 +19,7 @@ export const emptyEvent = {
 
 const Dashboard = () => {
 
-  const { auth } = useContext(AuthContext);
+  const { auth, logout } = useContext(AuthContext);
   const userName = auth.userName;
 
   const events = useEvents();
@@ -27,6 +27,7 @@ const Dashboard = () => {
   const [showModal, setShowModal] = useState(false);
 
   const handleLogout = () => {
+    logout();
     navigate("/login");
   };
 
