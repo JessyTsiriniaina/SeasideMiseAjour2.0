@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { APP_NAME } from "../config/config";
 import { DeleteConfirmModal } from "./Dashboard";
 import AuthContext from "../context/AuthProvider";
-import { fetchUsers, registerUser } from "../services/users";
+import { fetchUsers, registerUser, updateUser as updateUserService, deleteUser as deleteUserService } from "../services/users";
 
 function formatPrice(n) {
   return new Intl.NumberFormat("fr-FR").format(Number(n) || 0) + " Ar";
@@ -154,11 +154,27 @@ const UsersSection = ({ users, setUsers }) => {
   };
 
   const updateUser = async (user) => {
-    console.warn("updateUser is not implemented yet", user);
+    try {
+      await updateUserService(user.id, {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        estActif: user.status === "Actif",
+      });
+      await refreshUsers();
+    } catch (error) {
+      throw error;
+    }
   };
 
   const deleteUser = async (id) => {
-    console.warn("deleteUser is not implemented yet", id);
+    try {
+      await deleteUserService(id);
+      await refreshUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      throw error;
+    }
   };
 
   const handleCreate = async (user) => {
@@ -237,7 +253,14 @@ const UsersSection = ({ users, setUsers }) => {
       {deleting && (
         <DeleteConfirmModal
           onCancel={() => setDeleting(null)}
-          onConfirm={() => { deleteUser(deleting.id); setDeleting(null); }}
+          onConfirm={async () => {
+            try {
+              await deleteUser(deleting.id);
+              setDeleting(null);
+            } catch (error) {
+              console.error("Impossible de supprimer l'utilisateur:", error);
+            }
+          }}
           toDelete="utilisateur"
         />
       )}
@@ -275,12 +298,12 @@ function UserModal({ onClose, onSubmit, initialData }) {
         id: initialData.id || null,
         name: initialData.nomUtilisateur || initialData.name || "",
         email: initialData.email || "",
-        role: initialData.role || "",
+        role: initialData.role || "CLIENT",
         status: initialData.estActif ? "Actif" : "Suspendu",
         password: "",
         passwordConfirm: "",
       }
-      : { id: null, name: "", email: "", role: "", status: "", password: "", passwordConfirm: "" }
+      : { id: null, name: "", email: "", role: "CLIENT", status: "Actif", password: "", passwordConfirm: "" }
   );
   const [error, setError] = useState("");
   const isEdit = Boolean(initialData);
@@ -290,8 +313,12 @@ function UserModal({ onClose, onSubmit, initialData }) {
     e.preventDefault();
     if (!form.name.trim()) return setError("Le nom est requis");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError("Email invalide");
-    if (!form.password.trim()) return setError("Le mot de passe est requis");
-    if (form.password !== form.passwordConfirm) return setError("Les mots de passe ne correspondent pas");
+
+    if (!isEdit) {
+      if (!form.password.trim()) return setError("Le mot de passe est requis");
+      if (form.password !== form.passwordConfirm) return setError("Les mots de passe ne correspondent pas");
+    }
+
     setError("");
 
     try {
@@ -333,9 +360,9 @@ function UserModal({ onClose, onSubmit, initialData }) {
             <div className="modal-field">
               <label className="modal-label">Rôle</label>
               <select className="modal-input" value={form.role} onChange={update("role")}>
-                <option>Client</option>
-                <option>Admin</option>
-                <option>Comptoire</option>
+                <option value="CLIENT">Client</option>
+                <option value="ADMIN">Admin</option>
+                <option value="COMPTOIRE">Comptoire</option>
               </select>
             </div>
             <div className="modal-field">

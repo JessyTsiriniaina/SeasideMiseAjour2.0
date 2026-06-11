@@ -22,4 +22,19 @@ const registerUser = async (user) => {
   return response.data;
 };
 
-export { fetchUsers, registerUser };
+const updateUser = async (id, user) => {
+  const payload = {
+    nomUtilisateur: user.name,
+    email: user.email,
+    role: user.role ? user.role.toUpperCase() : undefined,
+    estActif: user.estActif,
+  };
+  const response = await axiosInstance.put(`/admin/utilisateurs/${id}`, payload);
+  return response.data;
+};
+
+const deleteUser = async (id) => {
+  return axiosInstance.delete(`/admin/utilisateurs/${id}`);
+};
+
+export { fetchUsers, registerUser, updateUser, deleteUser };
