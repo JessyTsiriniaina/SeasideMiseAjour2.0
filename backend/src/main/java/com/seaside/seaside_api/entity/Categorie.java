@@ -30,12 +30,13 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "categories")
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Categorie {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -47,8 +48,8 @@ public class Categorie {
 
     @NotBlank
     @Size(max = 100)
-    @Column(name = "categories", nullable = false, length = 100)
-    private String nom;  //  // "VIP", "Simple"
+    @Column(name = "nom_categorie", nullable = false, length = 100)
+    private String nom; // // "VIP", "Simple"
 
     @NotNull
     @DecimalMin("0.0")
@@ -58,10 +59,6 @@ public class Categorie {
     @Min(0)
     @Column(name = "capacite", nullable = false)
     private Integer capacite = 0;
-
-    @Size(max = 20)
-    @Column(name = "couleur", length = 20)
-    private String couleur;
 
     @Column(name = "est_actif", nullable = false)
     @Builder.Default
@@ -74,7 +71,8 @@ public class Categorie {
     // Methodes calcules
     @JsonIgnore
     public Integer getNombreEntrees() {
-        if (entrees == null) return 0;
+        if (entrees == null)
+            return 0;
         return entrees.stream()
                 .mapToInt(Entree::getComptage)
                 .sum();
