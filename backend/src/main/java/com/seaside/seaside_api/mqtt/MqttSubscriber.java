@@ -86,7 +86,7 @@ public class MqttSubscriber {
                         "nomCategorie",  categorie.getNom(),
                         "comptage",      comptage,
                         "totalCategorie", categorie.getNombreEntrees(),
-                        "revenuCategorie", categorie.getRevenuCategorie()
+                        "prixUnitaire", categorie.getPrix()
                     )
             );
  
