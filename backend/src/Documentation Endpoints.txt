@@ -1,0 +1,12 @@
+ws://localhost:8080/ws
+
+///topic Disponibles
+
+/topic/evenement/{id}           // mise a jour du comptage en temps réels
+{
+    "categorieId":"..",
+    "nomCategorie":"VIP",
+    "comptage":"1",
+    "totalCategorie":3,// exemple
+    "revenuCategorie":1000
+}

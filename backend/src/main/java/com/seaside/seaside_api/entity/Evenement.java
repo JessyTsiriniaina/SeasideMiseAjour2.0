@@ -76,7 +76,6 @@ public class Evenement {
     private LocalDateTime   dateCreation;
 
     @OneToMany(mappedBy = "evenement", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
     private List<Categorie> categories;
 
     // ------------ Hooks JPA ----------------

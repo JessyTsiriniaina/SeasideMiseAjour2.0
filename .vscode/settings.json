@@ -1,3 +1,7 @@
 {
-    "java.compile.nullAnalysis.mode": "automatic"
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.completion.enabled": true,
+    "java.completion.maxResults": 50,
+    "java.completion.importOrder": ["java", "javax", "org", "com"],
+    "java.codeGeneration.generateComments": true
 }

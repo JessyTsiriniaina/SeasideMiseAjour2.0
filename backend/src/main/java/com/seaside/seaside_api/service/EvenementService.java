@@ -91,7 +91,6 @@ public class EvenementService {
                 .nom(req.getNom())
                 .prix(req.getPrix())
                 .capacite(req.getCapacite())
-                .couleur(req.getCouleur())
                 .estActif(true)
                 .build();
         return categorieRepository.save(cat);
