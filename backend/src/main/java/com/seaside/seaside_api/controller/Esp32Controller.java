@@ -2,7 +2,7 @@ package com.seaside.seaside_api.controller;
 
 import com.seaside.seaside_api.dto.request.AssocierSlaveRequest;
 import com.seaside.seaside_api.dto.request.EnregistrerMasterRequest;
-import com.seaside.seaside_api.dto.response.DashboardStatsDTO;
+import com.seaside.seaside_api.dto.response.DashboardsStatsDTO;
 import com.seaside.seaside_api.dto.response.SlaveStatusDTO;
 import com.seaside.seaside_api.entity.ModuleEsp32;
 import com.seaside.seaside_api.entity.Utilisateur;
@@ -66,7 +66,7 @@ public class Esp32Controller {
     // GET /esp32/evenements/{evenementId}/dashboard
     // Dashboard complet : comptages + télémétrie + slaves
     @GetMapping("/evenements/{evenementId}/dashboard")
-    public ResponseEntity<DashboardStatsDTO> getDashboard(
+    public ResponseEntity<DashboardsStatsDTO> getDashboard(
             @PathVariable UUID evenementId) {
         return ResponseEntity.ok(esp32Service.getDashboard(evenementId, moi()));
     }

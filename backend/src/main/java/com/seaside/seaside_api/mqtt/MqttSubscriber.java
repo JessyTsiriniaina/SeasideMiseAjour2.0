@@ -13,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.hibernate.Hibernate;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -28,8 +31,31 @@ public class MqttSubscriber {
     private final CategorieRepository categorieRepository;
     private final EntreeRepository entreeRepository;
     private final WebSocketPublisher webSocketPublisher;
-    private final Esp32Service esp32Service;
+    private final ApplicationContext applicationContext;
     private final ObjectMapper objectMapper;
+
+    // ─── @Lazy sur Esp32Service pour casser le cycle ────────
+    // Cycle : Esp32Service → MqttPublisher → MqttConfig → MqttSubscriber → Esp32Service
+    // @Lazy = Spring crée un proxy — Esp32Service est instancié seulement
+    // au premier appel réel, pas au démarrage
+    @Autowired
+    public MqttSubscriber(
+            CategorieRepository categorieRepository,
+            EntreeRepository entreeRepository,
+            WebSocketPublisher webSocketPublisher,
+            ObjectMapper objectMapper,
+            ApplicationContext applicationContext) {
+        this.categorieRepository = categorieRepository;
+        this.entreeRepository    = entreeRepository;
+        this.webSocketPublisher  = webSocketPublisher;
+        this.objectMapper        = objectMapper;
+        this.applicationContext  = applicationContext;
+    }
+
+    // Recuperer Esp32 au moment de l'appel
+    private Esp32Service esp32Service() {
+        return applicationContext.getBean(Esp32Service.class);
+    }
 
     // ─── Point d'entrée : appelé par MqttConfig ─────────────
     @Transactional
@@ -126,8 +152,8 @@ public class MqttSubscriber {
         Map<?, ?> data = objectMapper.readValue(payload, Map.class);
         String mac     = data.get("mac").toString();
         int batterie   = Integer.parseInt(data.get("batterie").toString());
-        esp32Service.traiterBatterieMaster(mac, batterie);
-        log.info("✓ Batterie master {} : {}%", mac, batterie);
+        esp32Service().traiterBatterieMaster(mac, batterie);
+        log.info(" Batterie master {} : {}%", mac, batterie);
     }
  
     // ─── 3. État d'un slave ──────────────────────────────────
@@ -143,8 +169,8 @@ public class MqttSubscriber {
         int batterie   = Integer.parseInt(data.get("batterie").toString());
         boolean connecte = Boolean.parseBoolean(data.get("connecte").toString());
  
-        esp32Service.traiterEtatSlave(mac, slaveId, batterie, connecte);
-        log.info("✓ Slave {} | master: {} | batterie: {}% | connecté: {}",
+        esp32Service().traiterEtatSlave(mac, slaveId, batterie, connecte);
+        log.info(" Slave {} | master: {} | batterie: {}% | connecté: {}",
                 slaveId, mac, batterie, connecte);
     }
  
@@ -158,7 +184,7 @@ public class MqttSubscriber {
         String message = data.get("message").toString();
  
         // Appel de la méthode correcte dans Esp32Service
-        esp32Service.traiterAlerteFirmware(mac, code, message);
+        esp32Service().traiterAlerteFirmware(mac, code, message);
         log.warn(" Alerte firmware — {}: {}", code, message);
     }
 }

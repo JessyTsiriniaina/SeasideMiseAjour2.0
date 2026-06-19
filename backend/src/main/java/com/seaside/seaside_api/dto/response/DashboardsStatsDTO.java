@@ -13,7 +13,7 @@ import java.util.UUID;
  
 // ─── Dashboard complet envoyé au frontend ───────────────
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
-public class DashboardStatsDTO {
+public class DashboardsStatsDTO {
     private String evenementId;
     private String nomEvenement;
     private Integer totalPersonnes;

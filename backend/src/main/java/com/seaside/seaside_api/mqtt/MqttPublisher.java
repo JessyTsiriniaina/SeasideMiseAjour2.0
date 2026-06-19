@@ -11,11 +11,16 @@ import java.util.Map;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class MqttPublisher {
 
     private final MqttPahoMessageHandler mqttOutbound;
     private final ObjectMapper objectMapper;
+
+    public MqttPublisher(MqttPahoMessageHandler mqttOutbound,
+                         ObjectMapper objectMapper) {
+        this.mqttOutbound = mqttOutbound;
+        this.objectMapper = objectMapper;
+    }
 
     // ─── Publier un message JSON vers un topic MQTT ──────────
     // Utilisé pour envoyer la config au firmware
