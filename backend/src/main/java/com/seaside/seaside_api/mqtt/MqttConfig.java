@@ -30,12 +30,26 @@ public class MqttConfig {
     @Value("${mqtt.topic}")
     private String topic; // seaside/entrees/#
 
+    @Value("${mqtt.username:}")
+    private String username; // "" si non défini
+
+    @Value("${mqtt.password:}")
+    private String password; // "" si non défini
+
     // ─── Fabrique client MQTT ────────────────────────────────
     @Bean
     public MqttPahoClientFactory mqttClientFactory() {
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
         MqttConnectOptions options = new MqttConnectOptions();
         options.setServerURIs(new String[] { brokerUrl });
+
+        //  Ajoute l'authentification (pour HiveMQ)
+        if (username != null && !username.isEmpty()) {
+            options.setUserName(username);
+            options.setPassword(password.toCharArray());
+            log.info("MQTT authentification activée avec username: {}", username);
+        }
+
         options.setCleanSession(true);
         options.setAutomaticReconnect(true); // reconnexion automatique
         options.setKeepAliveInterval(60);
@@ -81,8 +95,7 @@ public class MqttConfig {
     public MqttPahoMessageHandler mqttOutbound() {
         MqttPahoMessageHandler handler = new MqttPahoMessageHandler(
                 clientId + "-outbound", // client id unique pour l'outbound
-                mqttClientFactory()
-        );
+                mqttClientFactory());
         handler.setAsync(true); // non bloquant
         handler.setDefaultQos(1);
         handler.setDefaultRetained(false);
