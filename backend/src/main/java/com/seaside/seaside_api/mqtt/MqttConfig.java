@@ -2,8 +2,6 @@ package com.seaside.seaside_api.mqtt;
 
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.hibernate.validator.internal.util.stereotypes.Lazy;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,84 +20,89 @@ import org.springframework.messaging.MessageHandler;
 public class MqttConfig {
 
     @Value("${mqtt.broker.url}")
-    private String brokerUrl; // tcp://localhost:1883
+    private String brokerUrl;
 
     @Value("${mqtt.client.id}")
-    private String clientId; // seaside-server
+    private String clientId;
 
+    // mqtt.topic="seaside/entrees/#,seaside/telemetry/#,seaside/alerte"
     @Value("${mqtt.topic}")
-    private String topic; // seaside/entrees/#
+    private String topic;
 
     @Value("${mqtt.username:}")
-    private String username; // "" si non défini
+    private String username;
 
     @Value("${mqtt.password:}")
-    private String password; // "" si non défini
+    private String password;
 
-    // ─── Fabrique client MQTT ────────────────────────────────
     @Bean
     public MqttPahoClientFactory mqttClientFactory() {
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
         MqttConnectOptions options = new MqttConnectOptions();
-        options.setServerURIs(new String[] { brokerUrl });
+        options.setServerURIs(new String[]{brokerUrl});
+        options.setCleanSession(true);
+        options.setAutomaticReconnect(true);
+        options.setKeepAliveInterval(60);
 
-        //  Ajoute l'authentification (pour HiveMQ)
+        log.info("MQTT connexion -> url: {} | username: {}", brokerUrl, username);
+
         if (username != null && !username.isEmpty()) {
             options.setUserName(username);
             options.setPassword(password.toCharArray());
-            log.info("MQTT authentification activée avec username: {}", username);
         }
 
-        options.setCleanSession(true);
-        options.setAutomaticReconnect(true); // reconnexion automatique
-        options.setKeepAliveInterval(60);
-        // options.setConnectionTimeout(30);
         factory.setConnectionOptions(options);
         return factory;
     }
 
-    // ─── Canal de réception des messages MQTT ───────────────
     @Bean
     public MessageChannel mqttInputChannel() {
         return new DirectChannel();
     }
 
-    // ─── Adaptateur ENTRANT: écoute le broker sur le topic ─────────
     @Bean
     public MqttPahoMessageDrivenChannelAdapter mqttAdapter() {
-        MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(
-                clientId + "-inbound",
-                mqttClientFactory(),
-                topic);
+
+        // ═══════════════════════════════════════════════════
+        // CORRECTION : split la chaîne en tableau de topics
+        // Paho exige un varargs String[], pas "a,b,c" en un bloc
+        // ═══════════════════════════════════════════════════
+        String[] topics = topic.split(",");
+        log.info("MQTT abonnement aux topics : {}", String.join(" | ", topics));
+
+        MqttPahoMessageDrivenChannelAdapter adapter =
+                new MqttPahoMessageDrivenChannelAdapter(
+                        clientId + "-inbound",
+                        mqttClientFactory(),
+                        topics   // ← tableau, pas une String unique
+                );
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());
-        adapter.setQos(1); // QoS 1 = au moins une livraison
+        adapter.setQos(1, 1, 1); // un QoS par topic — même valeur ici
         adapter.setOutputChannel(mqttInputChannel());
         return adapter;
     }
 
-    // ─── Handler : traite chaque message reçu ───────────────
     @Bean
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public MessageHandler mqttMessageHandler(MqttRouter mqttRouter) {
         return message -> {
-            String topic = (String) message.getHeaders().get("mqtt_receivedTopic");
+            String topic   = (String) message.getHeaders().get("mqtt_receivedTopic");
             String payload = (String) message.getPayload();
-            log.info("MQTT reçu — topic: {} | payload: {}", topic, payload);
+            log.info("MQTT recu -- topic: {} | payload: {}", topic, payload);
             mqttRouter.router(topic, payload);
         };
     }
 
-    // Bean sortant : publie vers le broker
     @Bean
     public MqttPahoMessageHandler mqttOutbound() {
         MqttPahoMessageHandler handler = new MqttPahoMessageHandler(
-                clientId + "-outbound", // client id unique pour l'outbound
-                mqttClientFactory());
-        handler.setAsync(true); // non bloquant
+                clientId + "-outbound",
+                mqttClientFactory()
+        );
+        handler.setAsync(true);
         handler.setDefaultQos(1);
         handler.setDefaultRetained(false);
         return handler;
     }
-
 }

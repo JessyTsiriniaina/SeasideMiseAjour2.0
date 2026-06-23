@@ -2,6 +2,7 @@ package com.seaside.seaside_api.security;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,56 +29,47 @@ import lombok.RequiredArgsConstructor;
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    
+
     private final JwtFilter jwtFilter;
     private final UserDetailsServiceImpl userDetailsService;
 
-    // ------Routes publiques (Sans token) ------------
+    // ─── NOUVEAU : lu depuis application.properties ─────────
+    // En local  : app.cors.allowed-origins=http://localhost:3000
+    // En prod   : app.cors.allowed-origins=${FRONTEND_URL}
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
+
     private static final String[] ROUTES_PUBLIQUES = {
         "/auth/login",
         "/auth/register",
-        "/auth/refresh",  // pas besoin d'access token pour rafraichir
+        "/auth/refresh",
         "/actuator/health"
     };
 
     @Bean
     public SecurityFilterChain SecurityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Desactiver CSRF (on utilise jwt , pas de session)
             .csrf(AbstractHttpConfigurer::disable)
-
-            // Configurer CORS pour Jessy 
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-            // Definir les routes
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(ROUTES_PUBLIQUES).permitAll()
-                //Seul admin peut acceder au stats globals
                 .requestMatchers("/admin/**").hasRole("ADMIN")
-                // tout  le reste necessaire un token valide
                 .anyRequest().authenticated()
             )
-
-            // Pas de session -JWT est stateless
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-
-            // Ajouter le filtre jwt avant le filtre auth spring
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // -----------------BCrypt pour hasher les mots de passe --------------------
-    // BCrypt est irrevirsible - on ne peut pas retrouver le mot de passe original
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12); // On recommande 12= niveau de securite (max recommande)
+        return new BCryptPasswordEncoder(12);
     }
 
-    // ----------------- AuthenticationProvider --------------------
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -91,17 +83,21 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // ─── CORS pour Jessy en développement ────────────────
+    // ─── CORS — dynamique, plus de valeur en dur ────────────
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000"));
+
+        // CHANGEMENT ICI : split sur la virgule pour supporter
+        // plusieurs origines si besoin (local + prod en même temps)
+        config.setAllowedOrigins(List.of(allowedOrigins.split(",")));
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
- 
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
-    } 
+    }
 }
