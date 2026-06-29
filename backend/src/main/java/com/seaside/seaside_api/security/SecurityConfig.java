@@ -94,8 +94,8 @@ public class SecurityConfig {
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
-        //config.setAllowCredentials(true);
-        config.setAllowCredentials(false); // Pour tester avec Postman, sinon mettre true pour le front React
+        config.setAllowCredentials(true);
+        //config.setAllowCredentials(false); // Pour tester avec Postman, sinon mettre true pour le front React
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
