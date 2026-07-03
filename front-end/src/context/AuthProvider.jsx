@@ -1,3 +1,5 @@
+import axiosInstance from "../api/axios";
+import { fetchProfile } from "../services/users";
 import { createContext, useEffect, useState } from "react";
 
 const AUTH_STORAGE_KEY = "seaside-auth";
@@ -52,38 +54,72 @@ export const AuthProvider = ({ children }) => {
   }, [auth]);
 
   useEffect(() => {
-    const refreshAuth = async () => {
+    const initializeAuth = async () => {
       if (!auth?.accessToken || !auth?.refreshToken) return;
-      if (isTokenValid(auth.accessToken)) return;
 
-      try {
-        const response = await fetch("http://localhost:8080/api/auth/refresh", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken: auth.refreshToken }),
-        });
+      if (!isTokenValid(auth.accessToken)) {
+        try {
+          const response = await axiosInstance.post("/auth/refresh", {
+            refreshToken: auth.refreshToken,
+          });
 
-        if (!response.ok) throw new Error("Unable to refresh token");
-        const data = await response.json();
-        setAuthState((current) => ({
-          ...current,
-          accessToken: data.token,
-          refreshToken: data.refreshToken || current.refreshToken,
-          userRole: data.role || current.userRole,
-        }));
-      } catch {
-        setAuthState({});
+          const data = response.data;
+          setAuthState((current) => ({
+            ...current,
+            accessToken: data.token,
+            refreshToken: data.refreshToken || current.refreshToken,
+            userRole: data.role || current.userRole,
+          }));
+        } catch {
+          setAuthState({});
+          return;
+        }
+      }
+
+      if (!auth.profile) {
+        try {
+          const profile = await fetchProfile();
+          setAuthState((current) => ({
+            ...current,
+            profile,
+            userName: profile?.nomUtilisateur || current.userName,
+          }));
+        } catch {
+          console.warn("Unable to load profile");
+        }
       }
     };
 
-    refreshAuth();
-  }, []);
+    initializeAuth();
+  }, [auth.accessToken, auth.refreshToken, auth.profile]);
 
-  const setAuth = (nextAuth) => {
+  const setAuth = async (nextAuth) => {
     setAuthState(nextAuth && Object.keys(nextAuth).length ? nextAuth : {});
+
+    if (nextAuth?.accessToken && nextAuth?.refreshToken) {
+      try {
+        const profile = await fetchProfile();
+        setAuthState((current) => ({
+          ...current,
+          profile,
+          userName: profile?.nomUtilisateur || current.userName,
+        }));
+      } catch (error) {
+        console.warn("Unable to load profile", error?.response?.data || error.message);
+      }
+    }
   };
 
-  const logout = () => setAuthState({});
+  const logout = async () => {
+    if (auth?.accessToken) {
+      try {
+        await axiosInstance.post("/auth/logout");
+      } catch (error) {
+        console.warn("Logout request failed", error?.response?.data || error.message);
+      }
+    }
+    setAuthState({});
+  };
 
   return (
     <AuthContext.Provider value={{ auth, setAuth, logout }}>
