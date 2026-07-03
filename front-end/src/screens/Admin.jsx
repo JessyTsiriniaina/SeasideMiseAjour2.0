@@ -23,6 +23,10 @@ const NAV = [
 ];
 
 const Admin = () => {
+  useEffect(() => {
+    document.title = `Administration | ${APP_NAME}`;
+  }, []);
+
   const { auth, logout } = useContext(AuthContext);
   const userName = auth.userName;
 

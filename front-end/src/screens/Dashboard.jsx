@@ -17,6 +17,9 @@ export const emptyEvent = {
 };
 
 const Dashboard = () => {
+  useEffect(() => {
+    document.title = `Tableau de bord | ${APP_NAME}`;
+  }, []);
 
   const { auth, logout } = useContext(AuthContext);
   const userName = auth.profile?.nomUtilisateur || auth.userName;

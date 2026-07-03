@@ -2,9 +2,14 @@ import { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthContext from "../context/AuthProvider";
 import { updateProfile, changePassword } from "../services/users";
+import { APP_NAME } from "../config/config";
 import "./dashboard.css";
 
 const Profile = () => {
+  useEffect(() => {
+    document.title = `Mon profil | ${APP_NAME}`;
+  }, []);
+
   const { auth, setAuth, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const profile = auth.profile || {};

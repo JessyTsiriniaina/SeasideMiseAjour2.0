@@ -1,10 +1,15 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import './login.css'
 import axiosInstance from "../api/axios";
 import AuthContext from "../context/AuthProvider";
 import { useNavigate } from "react-router-dom";
+import { APP_NAME } from "../config/config";
 
 const Login = () => {
+  useEffect(() => {
+    document.title = `Connexion | ${APP_NAME}`;
+  }, []);
+
   const navigate = useNavigate();
   const { setAuth } = useContext(AuthContext);
   const [email, setEmail] = useState("");

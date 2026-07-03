@@ -197,6 +197,14 @@ const EventDetails = () => {
     loadEvent();
   }, [eventId]);
 
+  useEffect(() => {
+    if (event?.name) {
+      document.title = `${event.name} | ${APP_NAME}`;
+    } else {
+      document.title = `Détails de l'événement | ${APP_NAME}`;
+    }
+  }, [event]);
+
   const handleComptageMessage = useCallback((data) => {
     setEvent((current) => {
       if (!current) return current;
