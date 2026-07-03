@@ -330,10 +330,10 @@ const EventDetails = () => {
           <div className="details-body">
             <div className="details-head">
               <h1 className="details-title">{event.name}</h1>
-              <div className="event-meta-group">
+              {/*<div className="event-meta-group">
                 <p className="details-meta">{event.date}</p>
                 <p className="details-meta">{event.location}</p>
-              </div>
+              </div>*/}
               <div className="event-actions details-actions">
                 <button
                   className="event-action-button event-action-edit"
