@@ -1,16 +1,15 @@
 import React from 'react'
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import "./login.css";
 import "./dashboard.css";
-import { useEvents, addEvent, updateEvent, deleteEvent } from "../lib/eventStore";
+import { fetchEvents, createEvent } from "../services/events";
 import { APP_NAME } from '../config/config';
 import AuthContext from "../context/AuthProvider";
 
 export const emptyEvent = {
   name: "",
   date: "",
-  time: "",
   location: "",
   description: "",
   cover: "",
@@ -20,21 +19,47 @@ export const emptyEvent = {
 const Dashboard = () => {
 
   const { auth, logout } = useContext(AuthContext);
-  const userName = auth.userName;
+  const userName = auth.profile?.nomUtilisateur || auth.userName;
 
-  const events = useEvents();
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadEvents = async () => {
+      try {
+        const data = await fetchEvents();
+        if (mounted) setEvents(data);
+      } catch (error) {
+        console.error("Erreur lors du chargement des événements :", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    loadEvents();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  const handleCreate = (newEvent) => {
-    //setEvents([...events, { ...newEvent, id: Date.now() }]);
-    addEvent(newEvent);
-    setShowModal(false);
+  const handleCreate = async (newEvent) => {
+    try {
+      await createEvent(newEvent);
+      const data = await fetchEvents();
+      setEvents(data);
+      setShowModal(false);
+    } catch (error) {
+      console.error("Impossible de créer l'événement :", error);
+    }
   };
 
   return (
@@ -43,6 +68,9 @@ const Dashboard = () => {
         <h1 className="dashboard-brand">{APP_NAME}</h1>
         <div className="dashboard-user">
           <span className="dashboard-username">{userName}</span>
+          <button className="dashboard-button" onClick={() => navigate('/profile')}>
+            Mon profil
+          </button>
           <button className="dashboard-logout" onClick={handleLogout}>
             Se déconnecter
           </button>
@@ -57,7 +85,9 @@ const Dashboard = () => {
           </button>
         </div>
 
-        {events.length === 0 ? (
+        {loading ? (
+          <div className="empty-state">Chargement des événements...</div>
+        ) : events.length === 0 ? (
           <div className="empty-state">
             Vous n'avez encore organisé aucun événement.
           </div>
@@ -70,10 +100,14 @@ const Dashboard = () => {
                 className="event-card-link"
               >
                 <article className="event-card">
-                  <img className="event-cover" src={ev.cover} alt={ev.name} />
+                  {ev.cover ? (
+                    <img className="event-cover" src={ev.cover} alt={ev.name} />
+                  ) : (
+                    <div className="event-cover event-cover-empty">Aucune image</div>
+                  )}
                   <div className="event-body">
                     <h3 className="event-name">{ev.name}</h3>
-                    <p className="event-meta">{ev.date} • {ev.time}</p>
+                    <p className="event-meta">{ev.date}</p>
                     <p className="event-meta">{ev.location}</p>
                   </div>
                 </article>
@@ -93,33 +127,19 @@ const Dashboard = () => {
 
 export const EventModal = ({ onClose, onSubmit, initialData }) => {
   const [form, setForm] = useState(initialData || emptyEvent);
-  const [coverName, setCoverName] = useState("");
   const [error, setError] = useState("");
 
   const isEdit = Boolean(initialData);
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
-  const handleCoverChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.type !== "image/jpeg" && file.type !== "image/png") {
-      setError("Veuillez choisir un fichier .jpeg ou .png");
-      return;
-    }
-    setError("");
-    setCoverName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => setForm((f) => ({ ...f, cover: reader.result }));
-    reader.readAsDataURL(file);
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.cover) {
-      setError("Veuillez ajouter une photo de couverture");
-      return;
-    }
+    setError("");
+    if (!form.name.trim()) return setError("Le nom de l'événement est requis");
+    if (!form.date) return setError("La date est requise");
+    if (!form.location.trim()) return setError("Le lieu est requis");
+    if (!form.description.trim()) return setError("La description est requise");
     onSubmit(form);
   };
 
@@ -128,47 +148,34 @@ export const EventModal = ({ onClose, onSubmit, initialData }) => {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="modal-title">{isEdit ? "Modifier l'événement" : "Nouvel événement"}</h2>
         <form className="modal-form" onSubmit={handleSubmit}>
-          <div className="modal-field">
-            <label className="modal-label">Photo de couverture (.jpeg ou .png)</label>
-            <label className="cover-upload">
-              <input
-                type="file"
-                accept="image/jpeg,image/png"
-                onChange={handleCoverChange}
-                className="cover-upload-input"
-              />
-              <span className="cover-upload-button">
-                {form.cover ? "Changer l'image" : "Choisir une image"}
-              </span>
-              <span className="cover-upload-name">
-                {coverName || (form.cover ? "Image actuelle" : "Aucun fichier choisi")}
-              </span>
-            </label>
-            {form.cover && (
-              <img src={form.cover} alt="Aperçu" className="cover-preview" />
-            )}
-            {error && <p className="modal-error">{error}</p>}
-          </div>
 
           <div className="modal-field">
             <label className="modal-label">Nom de l'événement</label>
-            <input type="text" className="modal-input" value={form.name} onChange={update("name")} required />
+            <input
+              type="text"
+              className="modal-input"
+              value={form.name}
+              onChange={update("name")}
+              maxLength={100}
+              required
+            />
           </div>
 
-          <div className="modal-row">
-            <div className="modal-field">
-              <label className="modal-label">Date</label>
-              <input type="date" className="modal-input" value={form.date} onChange={update("date")} required />
-            </div>
-            <div className="modal-field">
-              <label className="modal-label">Heure de début</label>
-              <input type="time" className="modal-input" value={form.time} onChange={update("time")} required />
-            </div>
+          <div className="modal-field">
+            <label className="modal-label">Date</label>
+            <input type="date" className="modal-input" value={form.date} onChange={update("date")} required />
           </div>
 
           <div className="modal-field">
             <label className="modal-label">Lieu</label>
-            <input type="text" className="modal-input" value={form.location} onChange={update("location")} required />
+            <input
+              type="text"
+              className="modal-input"
+              value={form.location}
+              onChange={update("location")}
+              maxLength={50}
+              required
+            />
           </div>
 
           <div className="modal-field">
@@ -176,6 +183,7 @@ export const EventModal = ({ onClose, onSubmit, initialData }) => {
             <textarea className="modal-textarea" value={form.description} onChange={update("description")} required />
           </div>
 
+          {error && <p className="modal-error">{error}</p>}
           <div className="modal-actions">
             <button type="button" className="modal-button modal-button-secondary" onClick={onClose}>
               Annuler
@@ -211,5 +219,4 @@ export const DeleteConfirmModal = ({ onCancel, onConfirm,toDelete }) => {
   );
 }
 
-export { addEvent, updateEvent, deleteEvent };
 export default Dashboard;
