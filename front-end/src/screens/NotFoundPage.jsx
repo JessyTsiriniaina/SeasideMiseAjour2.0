@@ -1,8 +1,14 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { APP_NAME } from "../config/config";
 import "./notFoundPage.css";
 import "./login.css"
 
 const NotFoundPage = () => {
+  useEffect(() => {
+    document.title = `Page introuvable | ${APP_NAME}`;
+  }, []);
+
   return (
     <div className="notfound-container">
       <div className="notfound-card">
